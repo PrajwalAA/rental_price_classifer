@@ -125,8 +125,9 @@ def preprocess_input(df: pd.DataFrame, feature_names: List[str], scaler: Any) ->
     
     for feature in categorical_features:
         if feature in processed_df.columns:
-            # Use prefix to avoid column name collisions, e.g., 'area' and 'area_manewada'
-            processed_df = pd.get_dummies(processed_df, columns=[feature], prefix=feature)
+            # CRITICAL FIX: Removed 'prefix=feature' to exactly match the original training script's column names.
+            # This ensures a column like '0' (for ground floor) is created, not 'floor_no_0'.
+            processed_df = pd.get_dummies(processed_df, columns=[feature])
 
     # Align columns with training data
     for col in feature_names:
@@ -137,16 +138,12 @@ def preprocess_input(df: pd.DataFrame, feature_names: List[str], scaler: Any) ->
     processed_df = processed_df[feature_names]
     
     # Scale numerical features
-    # Identify numerical columns that are present in the final dataframe
     numerical_cols_for_scaling = [
         'size_in_sqft', 'carpet_area_sqft', 'private_washroom', 'public_washroom',
         'total_floors', 'property_age', 'expected rent increases yearly',
         'lock_in_period_in_months'
     ]
-    # Add amenity columns that are numerical (0 or 1)
     numerical_cols_for_scaling.extend([amenity.replace(' ', '_') for amenity in all_amenities])
-
-    # Filter to only include columns present in the DataFrame and were in the training set
     numerical_cols_present = [col for col in numerical_cols_for_scaling if col in processed_df.columns]
     
     if numerical_cols_present:
