@@ -115,9 +115,9 @@ def load_resources() -> Tuple[Any, Any, List[str]]:
     If resources aren't found or fail to load, returns (None, None, None).
     """
     try:
-        rf_model = joblib.load('commercial_model.pkl')  # Update to your model filename
-        scaler = joblib.load('commercial_scaler.pkl')  # Update to your scaler filename
-        features = joblib.load('commercial_features.pkl')  # Update to your features filename
+        rf_model = joblib.load('mc.pkl')  # Update to your model filename
+        scaler = joblib.load('sc.pkl')  # Update to your scaler filename
+        features = joblib.load('fc.pkl')  # Update to your features filename
         # Normalize features to a list of column names
         if isinstance(features, (pd.Index, np.ndarray, list)):
             features_list = list(features)
