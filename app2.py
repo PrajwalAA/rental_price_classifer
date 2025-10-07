@@ -15,58 +15,24 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling and black text
+# Custom CSS for bright yellow text and compact layout
 st.markdown("""
 <style>
-    /* Set default text color to black */
-    html, body, .stApp, .stMarkdown {
-        color: black;
+    /* Set default text color to bright yellow */
+    html, body, .stApp, .stMarkdown, h1, h2, h3, h4, h5, h6, p, span, div, label {
+        color: #FFD700 !important;
     }
-    .main-header {
-        font-size: 2.5rem;
-        color: black;
-        text-align: center;
-        margin-bottom: 1rem;
-    }
-    .sub-header {
-        font-size: 1.5rem;
-        color: black;
-        margin-bottom: 1rem;
-    }
-    .prediction-result {
-        background-color: #f0f8ff;
-        padding: 1rem;
-        border-radius: 10px;
-        margin-top: 1rem;
-    }
-    .feature-importance {
-        background-color: #f8f9fa;
-        padding: 1rem;
-        border-radius: 10px;
-        margin-top: 1rem;
-    }
-    .stButton>button {
-        background-color: #1f77b4;
-        color: white;
-        font-weight: bold;
+    /* Make widgets more compact */
+    .stSelectbox > div > div { padding: 0.25rem 0.5rem; }
+    .stNumberInput > div > div { padding: 0.25rem 0.5rem; }
+    .stMultiSelect > div > div { padding: 0.25rem 0.5rem; }
+    .element-container { margin-bottom: 0.5rem; }
+    /* Reduce form padding */
+    .stForm { border: 0px; padding: 0rem; }
+    /* Style expander header */
+    .streamlit-expanderHeader {
+        background-color: #333;
         border-radius: 5px;
-        padding: 0.5rem 1rem;
-    }
-    .metric-card {
-        background-color: white;
-        padding: 1rem;
-        border-radius: 10px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        margin-bottom: 1rem;
-    }
-    .section-header {
-        font-size: 1.2rem;
-        font-weight: bold;
-        color: #1f77b4;
-        margin-top: 1.5rem;
-        margin-bottom: 0.5rem;
-        border-bottom: 1px solid #e0e0e0;
-        padding-bottom: 0.3rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -178,117 +144,60 @@ def preprocess_input(user_data, feature_names, scaler):
 
 # Main function to run the app
 def main():
-    # Load model components
     model, scaler, feature_names = load_model_components()
     
     if model is None or scaler is None or feature_names is None:
         st.error("Unable to load model components. Please check your files.")
         return
     
-    # App header
-    st.markdown('<h1 class="main-header">🏢 Commercial Property Rent Predictor</h1>', unsafe_allow_html=True)
-    st.markdown('<p style="text-align: center; color: #666; margin-bottom: 2rem;">Enter property details to predict the rental price</p>', unsafe_allow_html=True)
-    
-    # --- Property Details Form ---
-    st.markdown('<h2 class="sub-header">Property Information</h2>', unsafe_allow_html=True)
+    st.markdown('<h1 style="text-align: center;">🏢 Commercial Property Rent Predictor</h1>', unsafe_allow_html=True)
     
     with st.form("prediction_form"):
-        # Basic Information Section
-        st.markdown('<div class="section-header">Basic Information</div>', unsafe_allow_html=True)
-        
-        property_types = ['showroom', 'shop', 'bare shell office', 'ready to use office', 
-                        'commercial property', 'werehouse', 'godown']
-        property_type = st.selectbox("Property Type:", property_types, index=0)
-        
-        col1, col2 = st.columns(2)
+        # --- Compact Input Grid ---
+        col1, col2, col3 = st.columns(3)
         with col1:
-            size_sqft = st.number_input("Size in sqft", min_value=100, max_value=100000, value=1000, step=50)
+            property_type = st.selectbox("Property Type", ['showroom', 'shop', 'bare shell office', 'ready to use office', 'commercial property', 'werehouse', 'godown'], index=0)
+            size_sqft = st.number_input("Size (sqft)", min_value=100, max_value=100000, value=1000, step=50)
+            area = st.selectbox("Area", ['manewada', 'jaitala', 'besa', 'omkar nagar', 'itwari', 'hingna', 'sitabuldi', 'mahal', 'kharbi', 'mihan', 'pratap nagar', 'ramdaspeth', 'dharampeth', 'gandhibag', 'chatrapati nagar', 'nandanwan', 'sadar', 'dighori', 'somalwada', 'ganeshpeth colony', 'mhalgi nagar', 'sakkardara', 'babulban', 'manish nagar', 'dhantoli', 'khamla', 'laxminagar', 'ajni', 'wathoda', 'hulkeshwar', 'pardi', 'new indora', 'civil lines', 'gadhibag', 'bagadganj', 'swawlambi nagar', 'manawada', 'trimurti nagar', 'lakadganj', 'shivaji nagar'], index=0)
         with col2:
-            carpet_area = st.number_input("Carpet Area in sqft", min_value=100, max_value=100000, value=800, step=50)
+            carpet_area = st.number_input("Carpet Area (sqft)", min_value=100, max_value=100000, value=800, step=50)
+            zone = st.selectbox("Zone", ['south', 'west', 'east', 'north'], index=0)
+            location_hub = st.selectbox("Location Hub", ['commercial project', 'others', 'retail complex/building', 'market/high street', 'business park', 'it park', 'residential'], index=0)
+        with col3:
+            ownership = st.selectbox("Ownership", ['freehold', 'leasehold', 'cooperative society', 'power_of_attorney'], index=0)
+            floor_no = st.selectbox("Floor", ['ground floor', '1 floor', '2 floor', '1, 2,3 floors', 'ground floor,1 floor', '1,2,3 floors', '1,2 floors', '1,2,3,4,GF', '1 , GF floor', '8 floor', '3 floor'], index=0)
+            total_floors = st.selectbox("Total Floors", ['3 floors', '1 floor', '2 floors', '4 floors', '5 floors', '8 floors', '7 floors', '6 floors', '15 floors', '9 floors', '10 floors'], index=0)
+
+        col_a, col_b, col_c = st.columns(3)
+        with col_a:
+            private_washroom = st.number_input("Private Washrooms", min_value=0, max_value=20, value=1)
+        with col_b:
+            public_washroom = st.number_input("Public Washrooms", min_value=0, max_value=20, value=1)
+        with col_c:
+            property_age = st.number_input("Property Age (years)", min_value=0, max_value=100, value=5)
+
+        # --- Expanders for less critical details ---
+        with st.expander("Amenities & Charges"):
+            amenities_options = ['parking', 'vastu', 'lift', 'cabin', 'meeting room', 'dg and ups', 'water storage', 'staircase', 'security', 'cctv', 'power backup', 'reception area', 'pantry', 'fire extinguishers', 'fire safety', 'oxygen duct', 'food court', 'furnishing', 'internet', 'fire sensors']
+            selected_amenities = st.multiselect("Select Amenities", amenities_options)
+            electric_charge = st.selectbox("Electric Charge Included", ['yes', 'no'], index=0)
+            water_charge = st.selectbox("Water Charge Included", ['yes', 'no'], index=0)
+
+        with st.expander("Other Details"):
+            possession_status = st.selectbox("Possession Status", ['ready to move', 'Under Construction'], index=0)
+            posted_by = st.selectbox("Posted By", ['owner', 'housing expert', 'broker'], index=0)
+            lock_in_period_str = st.selectbox("Lock-in Period", ['2 months', '6 months', '12 months', '3 months', '1 month', '11 months', '4 months', '10 months', '6  months', '8  months', '4  months', '36 months'], index=0)
+            expected_rent_increase_str = st.selectbox("Yearly Rent Increase", ['0.05', '0.10'], index=0)
+            negotiable = st.selectbox("Negotiable", ['yes', 'no'], index=0)
+            brokerage = st.selectbox("Brokerage", ['yes', 'no'], index=0)
         
-        # Location Information Section
-        st.markdown('<div class="section-header">Location Information</div>', unsafe_allow_html=True)
-        
-        areas = ['manewada', 'jaitala', 'besa', 'omkar nagar', 'itwari', 'hingna', 
-                'sitabuldi', 'mahal', 'kharbi', 'mihan', 'pratap nagar', 'ramdaspeth', 
-                'dharampeth', 'gandhibag', 'chatrapati nagar', 'nandanwan', 'sadar', 
-                'dighori', 'somalwada', 'ganeshpeth colony', 'mhalgi nagar', 'sakkardara', 
-                'babulban', 'manish nagar', 'dhantoli', 'khamla', 'laxminagar', 'ajni', 
-                'wathoda', 'hulkeshwar', 'pardi', 'new indora', 'civil lines', 'gadhibag', 
-                'bagadganj', 'swawlambi nagar', 'manawada', 'trimurti nagar', 'lakadganj', 'shivaji nagar']
-        area = st.selectbox("Area:", areas, index=0)
-        
-        zones = ['south', 'west', 'east', 'north']
-        zone = st.selectbox("Zone:", zones, index=0)
-        
-        location_hubs = ['commercial project', 'others', 'retail complex/building', 
-                        'market/high street', 'business park', 'it park', 'residential']
-        location_hub = st.selectbox("Location Hub:", location_hubs, index=0)
-        
-        ownerships = ['freehold', 'leasehold', 'cooperative society', 'power_of_attorney']
-        ownership = st.selectbox("Ownership Type:", ownerships, index=0)
-        
-        # Property Features Section
-        st.markdown('<div class="section-header">Property Features</div>', unsafe_allow_html=True)
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            private_washroom = st.number_input("Number of private washrooms", min_value=0, max_value=20, value=1)
-        with col2:
-            public_washroom = st.number_input("Number of public washrooms", min_value=0, max_value=20, value=1)
-        
-        floor_options = ['ground floor', '1 floor', '2 floor', '1, 2,3 floors', 
-                        'ground floor,1 floor', '1,2,3 floors', '1,2 floors', 
-                        '1,2,3,4,GF', '1 , GF floor', '8 floor', '3 floor']
-        floor_no = st.selectbox("Floor Number:", floor_options, index=0)
-        
-        total_floors_options = ['3 floors', '1 floor', '2 floors', '4 floors', 
-                               '5 floors', '8 floors', '7 floors', '6 floors', 
-                               '15 floors', '9 floors', '10 floors']
-        total_floors = st.selectbox("Total Floors in Building:", total_floors_options, index=0)
-        
-        # Amenities Section
-        st.markdown('<div class="section-header">Amenities</div>', unsafe_allow_html=True)
-        
-        amenities_options = ['parking', 'vastu', 'lift', 'cabin', 'meeting room', 'dg and ups', 
-                            'water storage', 'staircase', 'security', 'cctv', 'power backup', 
-                            'reception area', 'pantry', 'fire extinguishers', 'fire safety', 
-                            'oxygen duct', 'food court', 'furnishing', 'internet', 'fire sensors']
-        selected_amenities = st.multiselect("Select Amenities", amenities_options)
-        
-        # Other Details Section
-        st.markdown('<div class="section-header">Other Details</div>', unsafe_allow_html=True)
-        
-        yes_no_options = ['yes', 'no']
-        electric_charge = st.selectbox("Electric charge included:", yes_no_options, index=0)
-        water_charge = st.selectbox("Water charge included:", yes_no_options, index=0)
-        
-        property_age = st.number_input("Property age in years", min_value=0, max_value=100, value=5)
-        
-        possession_statuses = ['ready to move', 'Under Construction']
-        possession_status = st.selectbox("Possession status:", possession_statuses, index=0)
-        
-        posted_by_options = ['owner', 'housing expert', 'broker']
-        posted_by = st.selectbox("Posted by:", posted_by_options, index=0)
-        
-        lock_in_period_options = ['2 months', '6 months', '12 months', '3 months', '1 month', 
-                                 '11 months', '4 months', '10 months', '6  months', '8  months', 
-                                 '4  months', '36 months']
-        lock_in_period_str = st.selectbox("Lock-in period:", lock_in_period_options, index=0)
-        lock_in_period = int(re.sub(r'\D', '', lock_in_period_str))
-        
-        expected_rent_increase_options = ['0.05', '0.10']
-        expected_rent_increase_str = st.selectbox("Expected yearly rent increase:", expected_rent_increase_options, index=0)
-        expected_rent_increase = float(expected_rent_increase_str)
-        
-        negotiable = st.selectbox("Negotiable:", yes_no_options, index=0)
-        brokerage = st.selectbox("Brokerage:", yes_no_options, index=0)
-        
-        # Prediction button - FIXED: Using st.form_submit_button instead of st.button
-        st.markdown("---")
+        # --- Submit Button ---
         predict_button = st.form_submit_button("Predict Rent Price", use_container_width=True)
         
         if predict_button:
+            lock_in_period = int(re.sub(r'\D', '', lock_in_period_str))
+            expected_rent_increase = float(expected_rent_increase_str)
+            
             user_data = {
                 'listing litle': property_type, 'city': 'nagpur', 'area': area, 'zone': zone,
                 'location_hub': location_hub, 'property_type': property_type, 'ownership': ownership,
@@ -320,7 +229,7 @@ def main():
     # --- Prediction Results Section ---
     if 'prediction' in st.session_state:
         st.markdown("---")
-        st.markdown('<h2 class="sub-header">Prediction Results</h2>', unsafe_allow_html=True)
+        st.markdown('<h2>Prediction Results</h2>', unsafe_allow_html=True)
         
         prediction = st.session_state.prediction
         user_data = st.session_state.user_data
@@ -328,98 +237,43 @@ def main():
         col1, col2 = st.columns(2)
         
         with col1:
-            st.markdown('<div class="prediction-result">', unsafe_allow_html=True)
             st.markdown(f'<h3>Estimated Rent Price</h3>', unsafe_allow_html=True)
             st.markdown(f'<h1>₹{prediction:.2f}</h1>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
             
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.markdown('<h3>Property Summary</h3>', unsafe_allow_html=True)
+            st.markdown('<h4>Property Summary</h4>', unsafe_allow_html=True)
             st.write(f"**Property Type:** {user_data['property_type'].title()}")
             st.write(f"**Size:** {user_data['size_in_sqft']} sqft")
-            st.write(f"**Carpet Area:** {user_data['carpet_area_sqft']} sqft")
             st.write(f"**Area:** {user_data['area'].title()}")
-            st.write(f"**Zone:** {user_data['zone'].title()}")
-            st.markdown('</div>', unsafe_allow_html=True)
         
         with col2:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.markdown('<h3>Price Comparison</h3>', unsafe_allow_html=True)
+            st.markdown('<h4>Price Comparison</h4>', unsafe_allow_html=True)
             lower_bound = prediction * 0.85
             upper_bound = prediction * 1.15
-            st.write(f"**Fair Price Range:** ₹{lower_bound:.2f} - ₹{upper_bound:.2f}")
-            comparison_price = st.number_input("Enter Listed Price for Comparison", 
-                                             min_value=0.0, value=float(prediction), step=1000.0)
+            st.write(f"**Fair Range:** ₹{lower_bound:.2f} - ₹{upper_bound:.2f}")
+            comparison_price = st.number_input("Enter Listed Price", min_value=0.0, value=float(prediction), step=1000.0)
             if comparison_price < lower_bound:
-                st.warning("The listed price is **below** the estimated fair price range.")
+                st.warning("Listed price is **BELOW** fair range.")
             elif comparison_price > upper_bound:
-                st.warning("The listed price is **above** the estimated fair price range.")
+                st.warning("Listed price is **ABOVE** fair range.")
             else:
-                st.success("The listed price is **within** the estimated fair price range.")
-            st.markdown('</div>', unsafe_allow_html=True)
+                st.success("Listed price is **FAIR**.")
             
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.markdown('<h3>Future Rent Projection</h3>', unsafe_allow_html=True)
-            years = st.slider("Years for Projection", min_value=1, max_value=10, value=5)
-            growth_rate = st.slider("Annual Growth Rate (%)", min_value=0.0, max_value=15.0, value=5.0, step=0.5)
+            st.markdown('<h4>Future Projection</h4>', unsafe_allow_html=True)
+            years = st.slider("Years", min_value=1, max_value=10, value=5)
+            growth_rate = st.slider("Growth (%)", min_value=0.0, max_value=15.0, value=5.0, step=0.5)
             projected_price = prediction * ((1 + growth_rate/100) ** years)
-            st.write(f"**Projected Rent in {years} years:** ₹{projected_price:.2f}")
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.write(f"**Rent in {years} years:** ₹{projected_price:.2f}")
             
             fig, ax = plt.subplots(figsize=(10, 5))
             years_range = np.arange(0, years + 1)
             prices = [prediction * ((1 + growth_rate/100) ** y) for y in years_range]
-            ax.plot(years_range, prices, marker='o', linestyle='-', color='#1f77b4')
-            ax.set_title(f'Rent Projection Over {years} Years at {growth_rate}% Annual Growth')
-            ax.set_xlabel('Years')
-            ax.set_ylabel('Rent Price (₹)')
-            ax.grid(True, linestyle='--', alpha=0.7)
+            ax.plot(years_range, prices, marker='o', linestyle='-', color='#FFD700')
+            ax.set_title(f'Rent Projection ({growth_rate}% Growth)', color='#FFD700')
+            ax.set_xlabel('Years', color='#FFD700')
+            ax.set_ylabel('Rent Price (₹)', color='#FFD700')
+            ax.tick_params(colors='#FFD700')
+            ax.grid(True, linestyle='--', alpha=0.3)
             st.pyplot(fig)
-
-    # --- Feature Analysis Section ---
-    if 'processed_df' in st.session_state:
-        st.markdown("---")
-        st.markdown('<h2 class="sub-header">Feature Analysis</h2>', unsafe_allow_html=True)
-        
-        processed_df = st.session_state.processed_df
-        
-        if hasattr(model, 'feature_importances_'):
-            st.markdown('<div class="feature-importance">', unsafe_allow_html=True)
-            st.markdown('<h3>Feature Importance</h3>', unsafe_allow_html=True)
-            importances = model.feature_importances_
-            indices = np.argsort(importances)[::-1]
-            top_features = 15
-            top_indices = indices[:top_features]
-            feature_importance_df = pd.DataFrame({
-                'Feature': [feature_names[i] for i in top_indices],
-                'Importance': importances[top_indices]
-            })
-            fig, ax = plt.subplots(figsize=(12, 8))
-            sns.barplot(x='Importance', y='Feature', data=feature_importance_df, ax=ax)
-            ax.set_title(f'Top {top_features} Feature Importances')
-            ax.set_xlabel('Importance')
-            ax.set_ylabel('Feature')
-            st.pyplot(fig)
-            st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div class="feature-importance">', unsafe_allow_html=True)
-        st.markdown('<h3>Current Property Feature Values</h3>', unsafe_allow_html=True)
-        non_zero_features = processed_df.loc[:, (processed_df != 0).any(axis=0)]
-        numerical_features = non_zero_features.select_dtypes(include=['number']).columns.tolist()
-        categorical_features = non_zero_features.select_dtypes(exclude=['number']).columns.tolist()
-        
-        if numerical_features:
-            st.write("**Numerical Features:**")
-            num_features_df = non_zero_features[numerical_features].T
-            num_features_df.columns = ['Value']
-            st.dataframe(num_features_df)
-        
-        if categorical_features:
-            st.write("**Categorical Features:**")
-            cat_features_df = non_zero_features[categorical_features].T
-            cat_features_df.columns = ['Value']
-            st.dataframe(cat_features_df)
-        st.markdown('</div>', unsafe_allow_html=True)
 
 # Run the app
 if __name__ == "__main__":
