@@ -15,23 +15,26 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for bright yellow text and compact layout
+# Custom CSS for white text, dark theme, and compact layout
 st.markdown("""
 <style>
-    /* Set default text color to bright yellow */
-    html, body, .stApp, .stMarkdown, h1, h2, h3, h4, h5, h6, p, span, div, label {
-        color: #FFD700 !important;
+    /* Set default text color to white and background to dark */
+    .stApp {
+        background-color: #0E1117;
+        color: white;
     }
-    /* Make widgets more compact */
-    .stSelectbox > div > div { padding: 0.25rem 0.5rem; }
-    .stNumberInput > div > div { padding: 0.25rem 0.5rem; }
-    .stMultiSelect > div > div { padding: 0.25rem 0.5rem; }
+    html, body, .stMarkdown, h1, h2, h3, h4, h5, h6, p, span, div, label {
+        color: white !important;
+    }
+    /* Make widgets more compact and ensure text is white */
+    .stSelectbox > div > div > div { color: white; }
+    .stNumberInput > div > div > input { color: white; }
+    .stMultiSelect > div > div > div { color: white; }
     .element-container { margin-bottom: 0.5rem; }
-    /* Reduce form padding */
     .stForm { border: 0px; padding: 0rem; }
     /* Style expander header */
     .streamlit-expanderHeader {
-        background-color: #333;
+        background-color: #262730;
         border-radius: 5px;
     }
 </style>
@@ -264,15 +267,25 @@ def main():
             projected_price = prediction * ((1 + growth_rate/100) ** years)
             st.write(f"**Rent in {years} years:** ₹{projected_price:.2f}")
             
+            # --- MODIFIED PLOTTING SECTION ---
             fig, ax = plt.subplots(figsize=(10, 5))
             years_range = np.arange(0, years + 1)
             prices = [prediction * ((1 + growth_rate/100) ** y) for y in years_range]
-            ax.plot(years_range, prices, marker='o', linestyle='-', color='#FFD700')
-            ax.set_title(f'Rent Projection ({growth_rate}% Growth)', color='#FFD700')
-            ax.set_xlabel('Years', color='#FFD700')
-            ax.set_ylabel('Rent Price (₹)', color='#FFD700')
-            ax.tick_params(colors='#FFD700')
-            ax.grid(True, linestyle='--', alpha=0.3)
+            
+            # Set plot background to white
+            ax.set_facecolor('#FFFFFF')
+            fig.patch.set_facecolor('#FFFFFF')
+            
+            # Plot line with a visible color
+            ax.plot(years_range, prices, marker='o', linestyle='-', color='#1f77b4')
+            
+            # Set all text and grid elements to black
+            ax.set_title(f'Rent Projection ({growth_rate}% Growth)', color='black')
+            ax.set_xlabel('Years', color='black')
+            ax.set_ylabel('Rent Price (₹)', color='black')
+            ax.tick_params(colors='black')
+            ax.grid(True, linestyle='--', color='black', alpha=0.3)
+            
             st.pyplot(fig)
 
 # Run the app
