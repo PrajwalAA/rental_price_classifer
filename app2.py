@@ -59,6 +59,15 @@ st.markdown("""
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         margin-bottom: 1rem;
     }
+    .section-header {
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: #1f77b4;
+        margin-top: 1.5rem;
+        margin-bottom: 0.5rem;
+        border-bottom: 1px solid #e0e0e0;
+        padding-bottom: 0.3rem;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -167,12 +176,6 @@ def preprocess_input(user_data, feature_names, scaler):
     
     return df
 
-# Function to display options and get user selection
-def display_options(options, title):
-    st.write(f"**{title}:**")
-    selected_option = st.selectbox(f"Select {title.lower()}", options)
-    return selected_option
-
 # Main function to run the app
 def main():
     # Load model components
@@ -190,72 +193,96 @@ def main():
     st.markdown('<h2 class="sub-header">Property Information</h2>', unsafe_allow_html=True)
     
     with st.form("prediction_form"):
+        # Basic Information Section
+        st.markdown('<div class="section-header">Basic Information</div>', unsafe_allow_html=True)
+        
+        property_types = ['showroom', 'shop', 'bare shell office', 'ready to use office', 
+                        'commercial property', 'werehouse', 'godown']
+        property_type = st.selectbox("Property Type:", property_types, index=0)
+        
         col1, col2 = st.columns(2)
-        
         with col1:
-            st.write("### Basic Information")
-            property_types = ['showroom', 'shop', 'bare shell office', 'ready to use office', 
-                            'commercial property', 'werehouse', 'godown']
-            property_type = display_options(property_types, "Property Type")
             size_sqft = st.number_input("Size in sqft", min_value=100, max_value=100000, value=1000, step=50)
-            carpet_area = st.number_input("Carpet Area in sqft", min_value=100, max_value=100000, value=800, step=50)
-            
-            st.write("### Location Information")
-            areas = ['manewada', 'jaitala', 'besa', 'omkar nagar', 'itwari', 'hingna', 
-                    'sitabuldi', 'mahal', 'kharbi', 'mihan', 'pratap nagar', 'ramdaspeth', 
-                    'dharampeth', 'gandhibag', 'chatrapati nagar', 'nandanwan', 'sadar', 
-                    'dighori', 'somalwada', 'ganeshpeth colony', 'mhalgi nagar', 'sakkardara', 
-                    'babulban', 'manish nagar', 'dhantoli', 'khamla', 'laxminagar', 'ajni', 
-                    'wathoda', 'hulkeshwar', 'pardi', 'new indora', 'civil lines', 'gadhibag', 
-                    'bagadganj', 'swawlambi nagar', 'manawada', 'trimurti nagar', 'lakadganj', 'shivaji nagar']
-            area = display_options(areas, "Area")
-            zones = ['south', 'west', 'east', 'north']
-            zone = display_options(zones, "Zone")
-            location_hubs = ['commercial project', 'others', 'retail complex/building', 
-                            'market/high street', 'business park', 'it park', 'residential']
-            location_hub = display_options(location_hubs, "Location Hub")
-            ownerships = ['freehold', 'leasehold', 'cooperative society', 'power_of_attorney']
-            ownership = display_options(ownerships, "Ownership Type")
-        
         with col2:
-            st.write("### Property Features")
+            carpet_area = st.number_input("Carpet Area in sqft", min_value=100, max_value=100000, value=800, step=50)
+        
+        # Location Information Section
+        st.markdown('<div class="section-header">Location Information</div>', unsafe_allow_html=True)
+        
+        areas = ['manewada', 'jaitala', 'besa', 'omkar nagar', 'itwari', 'hingna', 
+                'sitabuldi', 'mahal', 'kharbi', 'mihan', 'pratap nagar', 'ramdaspeth', 
+                'dharampeth', 'gandhibag', 'chatrapati nagar', 'nandanwan', 'sadar', 
+                'dighori', 'somalwada', 'ganeshpeth colony', 'mhalgi nagar', 'sakkardara', 
+                'babulban', 'manish nagar', 'dhantoli', 'khamla', 'laxminagar', 'ajni', 
+                'wathoda', 'hulkeshwar', 'pardi', 'new indora', 'civil lines', 'gadhibag', 
+                'bagadganj', 'swawlambi nagar', 'manawada', 'trimurti nagar', 'lakadganj', 'shivaji nagar']
+        area = st.selectbox("Area:", areas, index=0)
+        
+        zones = ['south', 'west', 'east', 'north']
+        zone = st.selectbox("Zone:", zones, index=0)
+        
+        location_hubs = ['commercial project', 'others', 'retail complex/building', 
+                        'market/high street', 'business park', 'it park', 'residential']
+        location_hub = st.selectbox("Location Hub:", location_hubs, index=0)
+        
+        ownerships = ['freehold', 'leasehold', 'cooperative society', 'power_of_attorney']
+        ownership = st.selectbox("Ownership Type:", ownerships, index=0)
+        
+        # Property Features Section
+        st.markdown('<div class="section-header">Property Features</div>', unsafe_allow_html=True)
+        
+        col1, col2 = st.columns(2)
+        with col1:
             private_washroom = st.number_input("Number of private washrooms", min_value=0, max_value=20, value=1)
+        with col2:
             public_washroom = st.number_input("Number of public washrooms", min_value=0, max_value=20, value=1)
-            floor_options = ['ground floor', '1 floor', '2 floor', '1, 2,3 floors', 
-                            'ground floor,1 floor', '1,2,3 floors', '1,2 floors', 
-                            '1,2,3,4,GF', '1 , GF floor', '8 floor', '3 floor']
-            floor_no = display_options(floor_options, "Floor Number")
-            total_floors_options = ['3 floors', '1 floor', '2 floors', '4 floors', 
-                                   '5 floors', '8 floors', '7 floors', '6 floors', 
-                                   '15 floors', '9 floors', '10 floors']
-            total_floors = display_options(total_floors_options, "Total Floors in Building")
-            
-            st.write("### Amenities")
-            amenities_options = ['parking', 'vastu', 'lift', 'cabin', 'meeting room', 'dg and ups', 
-                                'water storage', 'staircase', 'security', 'cctv', 'power backup', 
-                                'reception area', 'pantry', 'fire extinguishers', 'fire safety', 
-                                'oxygen duct', 'food court', 'furnishing', 'internet', 'fire sensors']
-            selected_amenities = st.multiselect("Select Amenities", amenities_options)
-            
-            st.write("### Other Details")
-            yes_no_options = ['yes', 'no']
-            electric_charge = display_options(yes_no_options, "Electric charge included")
-            water_charge = display_options(yes_no_options, "Water charge included")
-            property_age = st.number_input("Property age in years", min_value=0, max_value=100, value=5)
-            possession_statuses = ['ready to move', 'Under Construction']
-            possession_status = display_options(possession_statuses, "Possession status")
-            posted_by_options = ['owner', 'housing expert', 'broker']
-            posted_by = display_options(posted_by_options, "Posted by")
-            lock_in_period_options = ['2 months', '6 months', '12 months', '3 months', '1 month', 
-                                     '11 months', '4 months', '10 months', '6  months', '8  months', 
-                                     '4  months', '36 months']
-            lock_in_period_str = display_options(lock_in_period_options, "Lock-in period")
-            lock_in_period = int(re.sub(r'\D', '', lock_in_period_str))
-            expected_rent_increase_options = ['0.05', '0.10']
-            expected_rent_increase_str = display_options(expected_rent_increase_options, "Expected yearly rent increase")
-            expected_rent_increase = float(expected_rent_increase_str)
-            negotiable = display_options(yes_no_options, "Negotiable")
-            brokerage = display_options(yes_no_options, "Brokerage")
+        
+        floor_options = ['ground floor', '1 floor', '2 floor', '1, 2,3 floors', 
+                        'ground floor,1 floor', '1,2,3 floors', '1,2 floors', 
+                        '1,2,3,4,GF', '1 , GF floor', '8 floor', '3 floor']
+        floor_no = st.selectbox("Floor Number:", floor_options, index=0)
+        
+        total_floors_options = ['3 floors', '1 floor', '2 floors', '4 floors', 
+                               '5 floors', '8 floors', '7 floors', '6 floors', 
+                               '15 floors', '9 floors', '10 floors']
+        total_floors = st.selectbox("Total Floors in Building:", total_floors_options, index=0)
+        
+        # Amenities Section
+        st.markdown('<div class="section-header">Amenities</div>', unsafe_allow_html=True)
+        
+        amenities_options = ['parking', 'vastu', 'lift', 'cabin', 'meeting room', 'dg and ups', 
+                            'water storage', 'staircase', 'security', 'cctv', 'power backup', 
+                            'reception area', 'pantry', 'fire extinguishers', 'fire safety', 
+                            'oxygen duct', 'food court', 'furnishing', 'internet', 'fire sensors']
+        selected_amenities = st.multiselect("Select Amenities", amenities_options)
+        
+        # Other Details Section
+        st.markdown('<div class="section-header">Other Details</div>', unsafe_allow_html=True)
+        
+        yes_no_options = ['yes', 'no']
+        electric_charge = st.selectbox("Electric charge included:", yes_no_options, index=0)
+        water_charge = st.selectbox("Water charge included:", yes_no_options, index=0)
+        
+        property_age = st.number_input("Property age in years", min_value=0, max_value=100, value=5)
+        
+        possession_statuses = ['ready to move', 'Under Construction']
+        possession_status = st.selectbox("Possession status:", possession_statuses, index=0)
+        
+        posted_by_options = ['owner', 'housing expert', 'broker']
+        posted_by = st.selectbox("Posted by:", posted_by_options, index=0)
+        
+        lock_in_period_options = ['2 months', '6 months', '12 months', '3 months', '1 month', 
+                                 '11 months', '4 months', '10 months', '6  months', '8  months', 
+                                 '4  months', '36 months']
+        lock_in_period_str = st.selectbox("Lock-in period:", lock_in_period_options, index=0)
+        lock_in_period = int(re.sub(r'\D', '', lock_in_period_str))
+        
+        expected_rent_increase_options = ['0.05', '0.10']
+        expected_rent_increase_str = st.selectbox("Expected yearly rent increase:", expected_rent_increase_options, index=0)
+        expected_rent_increase = float(expected_rent_increase_str)
+        
+        negotiable = st.selectbox("Negotiable:", yes_no_options, index=0)
+        brokerage = st.selectbox("Brokerage:", yes_no_options, index=0)
         
         # Prediction button
         st.markdown("---")
