@@ -284,9 +284,9 @@ def main():
         negotiable = st.selectbox("Negotiable:", yes_no_options, index=0)
         brokerage = st.selectbox("Brokerage:", yes_no_options, index=0)
         
-        # Prediction button
+        # Prediction button - FIXED: Using st.form_submit_button instead of st.button
         st.markdown("---")
-        predict_button = st.button("Predict Rent Price", use_container_width=True, type="primary")
+        predict_button = st.form_submit_button("Predict Rent Price", use_container_width=True)
         
         if predict_button:
             user_data = {
