@@ -1,298 +1,300 @@
 import streamlit as st
-import joblib
 import pandas as pd
 import numpy as np
+import joblib
 import re
-from sklearn.preprocessing import StandardScaler
+import datetime
+import matplotlib.pyplot as plt
+from typing import Tuple, List, Dict, Any
 
-# Set page configuration
-st.set_page_config(
-    page_title="Commercial Property Rent Predictor",
-    page_icon="🏢",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# --- Page Configuration ---
+st.set_page_config(page_title="Commercial Rent Predictor", layout="wide", initial_sidebar_state="expanded")
 
-# Load the saved model and components
-@st.cache_resource
+# --- Constants and Options (from your original script) ---
+PROPERTY_TYPES = ['showroom', 'shop', 'bare shell office', 'ready to use office', 
+                 'commercial property', 'werehouse', 'godown']
+AREAS = ['manewada', 'jaitala', 'besa', 'omkar nagar', 'itwari', 'hingna', 
+        'sitabuldi', 'mahal', 'kharbi', 'mihan', 'pratap nagar', 'ramdaspeth', 
+        'dharampeth', 'gandhibag', 'chatrapati nagar', 'nandanwan', 'sadar', 
+        'dighori', 'somalwada', 'ganeshpeth colony', 'mhalgi nagar', 'sakkardara', 
+        'babulban', 'manish nagar', 'dhantoli', 'khamla', 'laxminagar', 'ajni', 
+        'wathoda', 'hulkeshwar', 'pardi', 'new indora', 'civil lines', 'gadhibag', 
+        'bagadganj', 'swawlambi nagar', 'manawada', 'trimurti nagar', 'lakadganj', 'shivaji nagar']
+ZONES = ['south', 'west', 'east', 'north']
+LOCATION_HUBS = ['commercial project', 'others', 'retail complex/building', 
+                'market/high street', 'business park', 'it park', 'residential']
+OWNERSHIPS = ['freehold', 'leasehold', 'cooperative society', 'power_of_attorney']
+POSSESSION_STATUSES = ['ready to move', 'Under Construction']
+POSTED_BY_OPTIONS = ['owner', 'housing expert', 'broker']
+YES_NO_OPTIONS = ['yes', 'no']
+FLOOR_OPTIONS = ['ground floor', '1 floor', '2 floor', '1, 2,3 floors', 
+                'ground floor,1 floor', '1,2,3 floors', '1,2 floors', 
+                '1,2,3,4,GF', '1 , GF floor', '8 floor', '3 floor']
+TOTAL_FLOORS_OPTIONS = ['3 floors', '1 floor', '2 floors', '4 floors', 
+                       '5 floors', '8 floors', '7 floors', '6 floors', 
+                       '15 floors', '9 floors', '10 floors']
+AMENITIES_OPTIONS = ['parking', 'vastu', 'lift', 'cabin', 'meeting room', 'dg and ups', 
+                    'water storage', 'staircase', 'security', 'cctv', 'power backup', 
+                    'reception area', 'pantry', 'fire extinguishers', 'fire safety', 
+                    'oxygen duct', 'food court', 'furnishing', 'internet', 'fire sensors']
+LOCK_IN_PERIOD_OPTIONS = ['2 months', '6 months', '12 months', '3 months', '1 month', 
+                         '11 months', '4 months', '10 months', '6  months', '8  months', 
+                         '4  months', '36 months']
+EXPECTED_RENT_INCREASE_OPTIONS = ['0.05', '0.10']
+
+# --- Model Loading Function ---
+@st.cache_resource(show_spinner="Loading model and resources...")
 def load_model_components():
+    """Loads the trained model, scaler, and feature names."""
     try:
         model = joblib.load('mc.pkl')
         scaler = joblib.load('sc.pkl')
         feature_names = joblib.load('fc.pkl')
-        return model, scaler, feature_names
+        return model, scaler, list(feature_names)
+    except FileNotFoundError:
+        st.error("Model files not found. Please ensure 'mc.pkl', 'sc.pkl', and 'fc.pkl' are in the same directory as the app.")
+        return None, None, None
     except Exception as e:
-        st.error(f"Error loading model components: {e}")
+        st.error(f"An error occurred while loading model components: {e}")
         return None, None, None
 
-model, scaler, feature_names = load_model_components()
-
-# Define helper functions
-def floor_to_int_list(floor_str):
-    floor_str = str(floor_str).lower()
-    floor_str = floor_str.replace('floor', '').replace('floors', '').replace(' ', '')
-    floor_str = floor_str.replace('ground', '0').replace('gf', '0')
-    parts = re.split(r'[,]', floor_str)
-    floor_numbers = []
-    for p in parts:
+# --- Preprocessing Function (identical to your script) ---
+def preprocess_input(df: pd.DataFrame, feature_names: List[str], scaler: Any) -> pd.DataFrame:
+    """Preprocesses user input to match the model's training data format."""
+    processed_df = df.copy()
+    
+    # Process floor_no
+    def floor_to_int_list(floor_str):
+        floor_str = str(floor_str).lower().replace('floor', '').replace('floors', '').replace(' ', '')
+        floor_str = floor_str.replace('ground', '0').replace('gf', '0')
+        parts = re.split(r'[,]', floor_str)
+        floor_numbers = []
+        for p in parts:
+            try:
+                floor_numbers.append(int(p))
+            except ValueError:
+                continue
+        return ','.join(map(str, sorted(floor_numbers))) if floor_numbers else None
+    
+    processed_df['floor_no'] = processed_df['floor_no'].apply(floor_to_int_list)
+    
+    # Process total_floors
+    def total_floors_to_int(floor_str):
         try:
-            floor_numbers.append(int(p))
-        except:
-            continue
-    if floor_numbers:
-        return ','.join(map(str, sorted(floor_numbers)))
-    return '0'
+            return int(str(floor_str).lower().replace('floors', '').replace('floor', '').strip())
+        except ValueError:
+            return None
+    
+    processed_df['total_floors'] = processed_df['total_floors'].apply(total_floors_to_int)
+    
+    # Process size columns
+    def size_to_int(size_str):
+        try:
+            return int(str(size_str).lower().replace('sqft','').replace('sq.ft','').strip())
+        except ValueError:
+            return None
+    
+    processed_df['size_in_sqft'] = processed_df['size_in_sqft'].apply(size_to_int)
+    processed_df['carpet_area_sqft'] = processed_df['carpet_area_sqft'].apply(size_to_int)
+    
+    # Process amenities into binary columns
+    def extract_amenities_list(text):
+        text = str(text).lower()
+        text = re.sub(r'\(\d+\)', '', text)
+        amenities = [x.strip() for x in text.split(',') if x.strip()]
+        return amenities
 
-def process_user_input(inputs):
-    # Create a DataFrame with all features initialized to 0
-    input_df = pd.DataFrame(0, index=[0], columns=feature_names)
+    all_amenities = AMENITIES_OPTIONS
+    for amenity in all_amenities:
+        amenity_col = amenity.replace(' ', '_')
+        processed_df[amenity_col] = processed_df['amenities_count'].apply(
+            lambda x: 1 if amenity in extract_amenities_list(x) else 0
+        )
     
-    # Set numerical values
-    numerical_cols = ['size_in_sqft', 'carpet_area_sqft', 'private_washroom', 
-                     'public_washroom', 'total_floors', 'property_age',
-                     'expected rent increases yearly', 'lock_in_period_in_months']
+    # Process property_age and lock_in_period
+    processed_df['property_age'] = processed_df['property_age'].astype(int)
+    processed_df['lock_in_period_in_months'] = processed_df['lock in period'].str.replace('months', '', regex=False) \
+                                           .str.replace('month', '', regex=False) \
+                                           .str.strip().fillna(0).astype(int)
     
-    for col in numerical_cols:
-        if col in inputs:
-            input_df[col] = inputs[col]
+    # One-hot encode categorical features
+    categorical_features = ['listing litle', 'city', 'area', 'zone', 'location_hub',
+                           'property_type', 'ownership', 'floor_no',
+                           'electric_charge_included', 'water_charge_included',
+                           'possession_status', 'posted_by', 'negotiable', 'brokerage']
     
-    # Set amenities
-    amenities_cols = ['fire_extinguishers', 'food_court', 'cabin', 'lift', '0', 
-                     'water_storage', 'dg', 'fire_safety', 'security', 'cctv', 
-                     'oxygen_duct', 'furnishing', 'vastu', 'reception_area', 
-                     'internet', 'water_supply', 'fire_sensors', 'power_backup', 
-                     'dg_and_ups', 'parking', 'pantry']
+    for feature in categorical_features:
+        if feature in processed_df.columns:
+            # Use prefix to avoid column name collisions, e.g., 'area' and 'area_manewada'
+            processed_df = pd.get_dummies(processed_df, columns=[feature], prefix=feature)
+
+    # Align columns with training data
+    for col in feature_names:
+        if col not in processed_df.columns:
+            processed_df[col] = 0
     
-    for amenity in inputs.get('amenities', []):
-        amenity_clean = amenity.lower().replace(' ', '_')
-        if amenity_clean in amenities_cols:
-            input_df[amenity_clean] = 1
-    
-    # Set categorical features
-    categorical_mappings = {
-        'listing litle': inputs['listing litle'],
-        'area': inputs['area'],
-        'zone': inputs['zone'],
-        'location_hub': inputs['location_hub'],
-        'property_type': inputs['property_type'],
-        'ownership': inputs['ownership'],
-        'floor_no': floor_to_int_list(inputs['floor_no']),
-        'electric_charge_included': inputs['electric_charge_included'],
-        'water_charge_included': inputs['water_charge_included'],
-        'possession_status': inputs['possession_status'],
-        'posted_by': inputs['posted_by'],
-        'negotiable': inputs['negotiable'],
-        'brokerage': inputs['brokerage']
-    }
-    
-    # Create one-hot encoded columns
-    for feature, value in categorical_mappings.items():
-        if feature == 'floor_no':
-            col_name = f"floor_no_{value}"
-        elif feature in ['electric_charge_included', 'water_charge_included', 
-                         'possession_status', 'negotiable', 'brokerage']:
-            col_name = f"{feature}_{'yes' if value.lower() == 'yes' else 'no'}"
-        else:
-            col_name = f"{feature}_{value.lower().replace(' ', '_').replace('/', '_')}"
-        
-        if col_name in input_df.columns:
-            input_df[col_name] = 1
+    # Ensure correct column order
+    processed_df = processed_df[feature_names]
     
     # Scale numerical features
-    input_df[numerical_cols] = scaler.transform(input_df[numerical_cols])
+    # Identify numerical columns that are present in the final dataframe
+    numerical_cols_for_scaling = [
+        'size_in_sqft', 'carpet_area_sqft', 'private_washroom', 'public_washroom',
+        'total_floors', 'property_age', 'expected rent increases yearly',
+        'lock_in_period_in_months'
+    ]
+    # Add amenity columns that are numerical (0 or 1)
+    numerical_cols_for_scaling.extend([amenity.replace(' ', '_') for amenity in all_amenities])
+
+    # Filter to only include columns present in the DataFrame and were in the training set
+    numerical_cols_present = [col for col in numerical_cols_for_scaling if col in processed_df.columns]
     
-    return input_df
+    if numerical_cols_present:
+        processed_df[numerical_cols_present] = scaler.transform(processed_df[numerical_cols_present])
+    
+    return processed_df
 
-def predict_rent(inputs):
-    try:
-        processed_input = process_user_input(inputs)
-        prediction = model.predict(processed_input)
-        return np.expm1(prediction[0])  # Reverse log transformation
-    except Exception as e:
-        return f"Error making prediction: {str(e)}"
-
-# Main app
+# --- Main App Logic ---
 def main():
-    # Header
-    st.title("🏢 Commercial Property Rent Predictor")
-    st.markdown("Fill in the details below to predict the monthly rent for a commercial property in Nagpur.")
+    model, scaler, features = load_model_components()
     
+    st.title("🏢 Commercial Property Rent Prediction")
+    st.markdown("Enter the details of the commercial property to get an estimated rent price.")
+
     if model is None:
-        st.error("Model components not loaded. Please ensure 'mc.pkl', 'sc.pkl', and 'fc.pkl' are in the same directory.")
-        return
-    
-    # Define options for categorical features
-    listing_options = ['showroom for rent', 'shop for rent', 'bare shell office space', 
-                     'ready to use office space', 'commercial property', 'werehouse', 'godown for rent']
-    
-    area_options = ['manewada', 'jaitala', 'besa', 'omkar nagar', 'itwari', 'hingna', 
-                   'sitabuldi', 'mahal', 'kharbi', 'mihan', 'pratap nagar', 'ramdaspeth', 
-                   'dharampeth', 'gandhibag', 'chatrapati nagar', 'nandanwan', 'sadar']
-    
-    zone_options = ['south', 'west', 'east', 'north']
-    
-    location_hub_options = ['commercial project', 'others', 'retail complex/building', 
-                           'market/high street', 'business park', 'it park', 'residential']
-    
-    property_type_options = ['showroom', 'shop', 'bare shell office', 'ready to use office', 
-                           'commercial property', 'werehouse', 'godown']
-    
-    ownership_options = ['freehold', 'leasehold', 'cooperative society', 'power_of_attorney']
-    
-    possession_options = ['ready to move', 'Under Construction']
-    
-    posted_by_options = ['owner', 'housing expert', 'broker']
-    
-    amenities_options = ['parking', 'vastu', 'lift', 'cabin', 'meeting room', 
-                        'CCTV', 'water storage', 'power backup', 'security', 
-                        'fire safety', 'internet', 'pantry', 'food court', 
-                        'fire extinguishers', 'reception area', 'furnishing']
-    
-    # Create form
+        st.stop() # Stop execution if model loading failed
+
+    # --- Input Form ---
     with st.form("prediction_form"):
-        st.header("Property Details")
-        
-        # Two columns for layout
         col1, col2 = st.columns(2)
         
         with col1:
-            # Listing title
-            listing_title = st.selectbox("Listing Title", listing_options)
+            st.header("Basic & Location Details")
+            property_type = st.selectbox("Property Type*", PROPERTY_TYPES)
+            size_sqft = st.number_input("Size in sqft*", min_value=100, value=2000, step=50)
+            carpet_area = st.number_input("Carpet Area in sqft*", min_value=100, value=1800, step=50)
             
-            # Area
-            area = st.selectbox("Area", area_options)
+            area = st.selectbox("Area*", AREAS)
+            zone = st.selectbox("Zone*", ZONES)
+            location_hub = st.selectbox("Location Hub*", LOCATION_HUBS)
+            ownership = st.selectbox("Ownership Type*", OWNERSHIPS)
             
-            # Zone
-            zone = st.selectbox("Zone", zone_options)
-            
-            # Location Hub
-            location_hub = st.selectbox("Location Hub", location_hub_options)
-            
-            # Property Type
-            property_type = st.selectbox("Property Type", property_type_options)
-            
-            # Ownership
-            ownership = st.selectbox("Ownership", ownership_options)
-            
-            # Size in sqft
-            size_in_sqft = st.number_input("Size (sqft)", min_value=100, max_value=100000, value=1000)
-            
-            # Carpet area sqft
-            carpet_area_sqft = st.number_input("Carpet Area (sqft)", min_value=50, max_value=90000, value=800)
-            
-            # Private washroom
-            private_washroom = st.slider("Private Washrooms", min_value=0, max_value=3, value=1)
-            
-            # Public washroom
-            public_washroom = st.slider("Public Washrooms", min_value=0, max_value=3, value=1)
-            
-            # Floor number
-            floor_no = st.text_input("Floor Number(s)", value="1", 
-                                      help="Enter floor numbers separated by commas (e.g., '1' or '0,1,2')")
-            
-            # Total floors
-            total_floors = st.number_input("Total Floors", min_value=1, max_value=50, value=3)
-        
+            st.header("Features & Other Details")
+            private_washroom = st.number_input("Number of Private Washrooms", min_value=0, value=1, step=1)
+            public_washroom = st.number_input("Number of Public Washrooms", min_value=0, value=1, step=1)
+            floor_no = st.selectbox("Floor Number*", FLOOR_OPTIONS)
+            total_floors = st.selectbox("Total Floors in Building*", TOTAL_FLOORS_OPTIONS)
+            property_age = st.number_input("Property Age (years)*", min_value=0, value=5, step=1)
+
         with col2:
-            # Amenities
-            amenities = st.multiselect("Amenities", amenities_options, default=[])
+            st.header("Amenities & Charges")
+            amenities = st.multiselect("Select Amenities", AMENITIES_OPTIONS)
+            electric_charge = st.selectbox("Electric Charge Included*", YES_NO_OPTIONS)
+            water_charge = st.selectbox("Water Charge Included*", YES_NO_OPTIONS)
             
-            # Electric charge included
-            electric_charge_included = st.radio("Electric Charge Included", ['yes', 'no'], index=1)
-            
-            # Water charge included
-            water_charge_included = st.radio("Water Charge Included", ['yes', 'no'], index=0)
-            
-            # Property age
-            property_age = st.number_input("Property Age (years)", min_value=0, max_value=50, value=5)
-            
-            # Possession status
-            possession_status = st.radio("Possession Status", possession_options)
-            
-            # Posted by
-            posted_by = st.radio("Posted By", posted_by_options)
-            
-            # Lock in period
-            lock_in_period_in_months = st.number_input("Lock In Period (months)", min_value=0, max_value=60, value=6)
-            
-            # Expected rent increase
-            expected_rent_increase = st.number_input("Expected Yearly Rent Increase", 
-                                                    min_value=0.0, max_value=1.0, value=0.05, step=0.01,
-                                                    format="%.2f")
-            
-            # Negotiable
-            negotiable = st.radio("Negotiable", ['yes', 'no'], index=0)
-            
-            # Brokerage
-            brokerage = st.radio("Brokerage", ['yes', 'no'], index=0)
+            possession_status = st.selectbox("Possession Status*", POSSESSION_STATUSES)
+            posted_by = st.selectbox("Posted By*", POSTED_BY_OPTIONS)
+            lock_in_period_str = st.selectbox("Lock-in Period*", LOCK_IN_PERIOD_OPTIONS)
+            expected_rent_increase_str = st.selectbox("Expected Yearly Rent Increase*", EXPECTED_RENT_INCREASE_OPTIONS)
+            negotiable = st.selectbox("Negotiable*", YES_NO_OPTIONS)
+            brokerage = st.selectbox("Brokerage*", YES_NO_OPTIONS)
+
+        # --- Projection and Comparison Inputs ---
+        st.markdown("---")
+        st.header("Analysis & Projection")
+        col3, col4, col5 = st.columns(3)
+        with col3:
+            listed_price = st.number_input("Listed Price (for comparison)", min_value=0, value=100000, step=5000)
+        with col4:
+            projection_years = st.slider("Project rent for (years)", min_value=1, max_value=20, value=5)
+        with col5:
+            annual_growth_rate = st.slider("Annual Growth Rate (%)", min_value=0.0, max_value=15.0, value=4.0, step=0.5)
         
-        # Submit button
-        submit_button = st.form_submit_button(label="Predict Rent Price")
-    
-    # Process prediction when form is submitted
-    if submit_button:
-        # Prepare input dictionary
-        inputs = {
-            'listing litle': listing_title,
+        # --- Submit Button ---
+        submitted = st.form_submit_button("Predict Rent Price", use_container_width=True)
+
+    # --- Prediction and Results ---
+    if submitted:
+        # Create a dictionary with user input, matching the original script's keys
+        user_data = {
+            'listing litle': property_type, # Note: listing litle is same as property_type
+            'city': 'nagpur',
             'area': area,
             'zone': zone,
             'location_hub': location_hub,
             'property_type': property_type,
             'ownership': ownership,
-            'size_in_sqft': size_in_sqft,
-            'carpet_area_sqft': carpet_area_sqft,
+            'size_in_sqft': size_sqft,
+            'carpet_area_sqft': carpet_area,
             'private_washroom': private_washroom,
             'public_washroom': public_washroom,
             'floor_no': floor_no,
             'total_floors': total_floors,
-            'amenities': amenities,
-            'electric_charge_included': electric_charge_included,
-            'water_charge_included': water_charge_included,
+            'amenities_count': ', '.join(amenities),
+            'electric_charge_included': electric_charge,
+            'water_charge_included': water_charge,
             'property_age': property_age,
             'possession_status': possession_status,
             'posted_by': posted_by,
-            'lock_in_period_in_months': lock_in_period_in_months,
-            'expected rent increases yearly': expected_rent_increase,
+            'lock in period': lock_in_period_str,
+            'expected rent increases yearly': float(expected_rent_increase_str),
             'negotiable': negotiable,
             'brokerage': brokerage
         }
         
+        # Convert to DataFrame
+        user_df = pd.DataFrame([user_data])
+        
+        # Preprocess the data
+        processed_df = preprocess_input(user_df, features, scaler)
+        
         # Make prediction
-        with st.spinner("Calculating prediction..."):
-            prediction = predict_rent(inputs)
-        
-        # Display prediction
-        st.header("Prediction Result")
-        
-        if isinstance(prediction, str):
-            st.error(prediction)
-        else:
-            st.success(f"Predicted Monthly Rent: ₹{prediction:,.2f}")
+        try:
+            prediction_log = model.predict(processed_df)[0]
+            prediction = np.expm1(prediction_log) # Convert back from log scale
             
-            # Display additional information
-            st.subheader("Property Summary")
-            col1, col2, col3 = st.columns(3)
+            st.markdown("---")
+            st.header("📊 Prediction Results")
+            st.success(f"**Estimated Rent Price: ₹{prediction:,.2f}**")
+
+            # Price Comparison
+            st.subheader("Price Comparison")
+            fair_price_tolerance = 0.25 # 25%
+            lower_bound = prediction * (1 - fair_price_tolerance)
+            upper_bound = prediction * (1 + fair_price_tolerance)
             
-            with col1:
-                st.metric("Property Type", property_type)
-                st.metric("Area", area)
-                st.metric("Zone", zone)
-                
-            with col2:
-                st.metric("Size", f"{size_in_sqft:,} sqft")
-                st.metric("Carpet Area", f"{carpet_area_sqft:,} sqft")
-                st.metric("Property Age", f"{property_age} years")
-                
-            with col3:
-                st.metric("Location Hub", location_hub)
-                st.metric("Possession", possession_status)
-                st.metric("Posted By", posted_by)
+            st.write(f"**Fair Price Range (±{fair_price_tolerance*100:.0f}%):** ₹{lower_bound:,.2f} - ₹{upper_bound:,.2f}")
+            st.write(f"**Your Listed Price:** ₹{listed_price:,.2f}")
             
-            # Display selected amenities
-            if amenities:
-                st.subheader("Selected Amenities")
-                amenities_str = ", ".join(amenities)
-                st.info(amenities_str)
+            if listed_price < lower_bound:
+                st.warning("🔻 The listed price seems to be **UNDERPRICED**.")
+            elif listed_price > upper_bound:
+                st.warning("🔺 The listed price seems to be **OVERPRICED**.")
+            else:
+                st.success("✅ The listed price appears to be **FAIR**.")
+
+            # Future Projection
+            st.subheader(f"Future Rent Projection ({projection_years} years)")
+            future_rent = prediction * ((1 + annual_growth_rate / 100) ** projection_years)
+            st.info(f"Projected rent in {projection_years} years: **₹{future_rent:,.2f}**")
+            
+            # 15-Year Projection Plot
+            st.subheader("15-Year Projection Trend")
+            years = np.arange(1, 16)
+            projected_rents = [prediction * ((1 + annual_growth_rate / 100) ** y) for y in years]
+            
+            fig, ax = plt.subplots(figsize=(10, 5))
+            ax.plot(years, projected_rents, marker='o', linestyle='-', color='#1f77b4')
+            ax.set_title(f'15-Year Rent Projection at {annual_growth_rate}% Annual Growth')
+            ax.set_xlabel("Year")
+            ax.set_ylabel("Projected Rent (₹)")
+            ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+            ax.set_xticks(years)
+            st.pyplot(fig)
+            plt.close(fig)
+
+        except Exception as e:
+            st.error(f"An error occurred during prediction: {e}")
 
 if __name__ == "__main__":
     main()
