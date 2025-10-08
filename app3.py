@@ -37,6 +37,10 @@ st.markdown("""
         background-color: #262730;
         border-radius: 5px;
     }
+    /* Style multiselect dropdown */
+    .stMultiSelect div[data-baseweb="select"] span {
+        color: white;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -169,8 +173,9 @@ def main():
         with col3:
             ownership = st.selectbox("Ownership", ['freehold', 'leasehold', 'cooperative society', 'power_of_attorney'], index=0)
             total_floors = st.selectbox("Total Floors", ['3 floors', '1 floor', '2 floors', '4 floors', '5 floors', '8 floors', '7 floors', '6 floors', '15 floors', '9 floors', '10 floors'], index=0)
-            # --- NEW: Floor Selection with Dropdown ---
-            floor_no = st.selectbox("Floor Number", [f"Floor {i}" for i in range(0, 11)], index=0)
+            # --- NEW: Floor Selection with Multiselect Dropdown (shows checkboxes) ---
+            floor_options = [f"Floor {i}" for i in range(0, 11)]
+            selected_floors = st.multiselect("Select Available Floors", floor_options, default=["Floor 0"])
 
         col_a, col_b, col_c = st.columns(3)
         with col_a:
@@ -199,8 +204,9 @@ def main():
         predict_button = st.form_submit_button("Predict Rent Price", use_container_width=True)
         
         if predict_button:
-            # Process the selected floor from dropdown
-            floor_no_str = floor_no.replace("Floor ", "")
+            # Process the selected floors from multiselect
+            floor_numbers = [floor.replace("Floor ", "") for floor in selected_floors]
+            floor_no_str = ",".join(sorted(floor_numbers))
             
             lock_in_period = int(re.sub(r'\D', '', lock_in_period_str))
             expected_rent_increase = float(expected_rent_increase_str)
@@ -251,7 +257,12 @@ def main():
             st.write(f"**Property Type:** {user_data['property_type'].title()}")
             st.write(f"**Size:** {user_data['size_in_sqft']} sqft")
             st.write(f"**Area:** {user_data['area'].title()}")
-            st.write(f"**Floor:** Floor {user_data['floor_no']}")
+            # Display selected floors in a readable format
+            floors_list = user_data['floor_no'].split(',')
+            if len(floors_list) == 1:
+                st.write(f"**Floor:** Floor {floors_list[0]}")
+            else:
+                st.write(f"**Floors:** {', '.join([f'Floor {f}' for f in floors_list])}")
         
         with col2:
             st.markdown('<h4>Price Comparison</h4>', unsafe_allow_html=True)
