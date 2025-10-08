@@ -41,8 +41,48 @@ st.markdown("""
     .stMultiSelect div[data-baseweb="select"] span {
         color: white;
     }
+    /* Custom styling for price display */
+    .price-container {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        padding: 20px;
+        border-radius: 10px;
+        margin: 10px 0;
+    }
+    .price-label {
+        font-size: 14px;
+        opacity: 0.9;
+    }
+    .price-value {
+        font-size: 28px;
+        font-weight: bold;
+    }
+    .price-change {
+        font-size: 16px;
+        margin-top: 5px;
+    }
+    .positive-change {
+        color: #4ade80;
+    }
+    .negative-change {
+        color: #f87171;
+    }
 </style>
 """, unsafe_allow_html=True)
+
+# Floor weightage system (percentage adjustments)
+FLOOR_WEIGHTAGE = {
+    0: 0.0,    # Ground floor - base price
+    1: 2.0,    # 1st floor - 2% increase
+    2: 4.0,    # 2nd floor - 4% increase
+    3: 6.0,    # 3rd floor - 6% increase
+    4: 8.0,    # 4th floor - 8% increase
+    5: 10.0,   # 5th floor - 10% increase
+    6: 12.0,   # 6th floor - 12% increase
+    7: 14.0,   # 7th floor - 14% increase
+    8: 16.0,   # 8th floor - 16% increase
+    9: 18.0,   # 9th floor - 18% increase
+    10: 20.0   # 10th floor - 20% increase
+}
 
 # Load model, scaler, and feature names
 @st.cache_resource(show_spinner=True)
@@ -149,6 +189,20 @@ def preprocess_input(user_data, feature_names, scaler):
     
     return df
 
+# Calculate floor-adjusted rent
+def calculate_floor_adjusted_rent(base_rent, selected_floors):
+    if not selected_floors:
+        return base_rent, 0.0
+    
+    # Calculate average weightage for selected floors
+    total_weightage = sum(FLOOR_WEIGHTAGE.get(int(floor), 0) for floor in selected_floors)
+    avg_weightage = total_weightage / len(selected_floors)
+    
+    # Apply weightage to base rent
+    adjusted_rent = base_rent * (1 + avg_weightage / 100)
+    
+    return adjusted_rent, avg_weightage
+
 # Main function to run the app
 def main():
     model, scaler, feature_names = load_model_components()
@@ -158,6 +212,13 @@ def main():
         return
     
     st.markdown('<h1 style="text-align: center;">🏢 Commercial Property Rent Predictor</h1>', unsafe_allow_html=True)
+    
+    # Display floor weightage information
+    with st.expander("📊 Floor Premium Rates", expanded=False):
+        st.write("Rent adjustments based on floor selection:")
+        weightage_df = pd.DataFrame(list(FLOOR_WEIGHTAGE.items()), columns=['Floor', 'Premium (%)'])
+        weightage_df['Floor'] = weightage_df['Floor'].apply(lambda x: f"Floor {x}")
+        st.dataframe(weightage_df, hide_index=True, use_container_width=True)
     
     with st.form("prediction_form"):
         # --- Compact Input Grid ---
@@ -173,7 +234,7 @@ def main():
         with col3:
             ownership = st.selectbox("Ownership", ['freehold', 'leasehold', 'cooperative society', 'power_of_attorney'], index=0)
             total_floors = st.selectbox("Total Floors", ['3 floors', '1 floor', '2 floors', '4 floors', '5 floors', '8 floors', '7 floors', '6 floors', '15 floors', '9 floors', '10 floors'], index=0)
-            # --- NEW: Floor Selection with Multiselect Dropdown (shows checkboxes) ---
+            # --- Floor Selection with Multiselect Dropdown ---
             floor_options = [f"Floor {i}" for i in range(0, 11)]
             selected_floors = st.multiselect("Select Available Floors", floor_options, default=["Floor 0"])
 
@@ -229,35 +290,59 @@ def main():
             
             try:
                 prediction_log = model.predict(processed_df)[0]
-                prediction = np.expm1(prediction_log)
+                base_prediction = np.expm1(prediction_log)
                 
-                st.session_state.prediction = prediction
+                # Calculate floor-adjusted rent
+                adjusted_rent, avg_weightage = calculate_floor_adjusted_rent(base_prediction, floor_numbers)
+                
+                st.session_state.base_prediction = base_prediction
+                st.session_state.adjusted_prediction = adjusted_rent
+                st.session_state.avg_weightage = avg_weightage
                 st.session_state.user_data = user_data
                 st.session_state.processed_df = processed_df
+                st.session_state.selected_floors = selected_floors
                 st.success("Prediction successful! See the results below.")
 
             except Exception as e:
                 st.error(f"Error making prediction: {e}")
 
     # --- Prediction Results Section ---
-    if 'prediction' in st.session_state:
+    if 'base_prediction' in st.session_state:
         st.markdown("---")
         st.markdown('<h2>Prediction Results</h2>', unsafe_allow_html=True)
         
-        prediction = st.session_state.prediction
+        base_prediction = st.session_state.base_prediction
+        adjusted_prediction = st.session_state.adjusted_prediction
+        avg_weightage = st.session_state.avg_weightage
         user_data = st.session_state.user_data
+        selected_floors = st.session_state.selected_floors
         
         col1, col2 = st.columns(2)
         
         with col1:
-            st.markdown(f'<h3>Estimated Rent Price</h3>', unsafe_allow_html=True)
-            st.markdown(f'<h1>₹{prediction:.2f}</h1>', unsafe_allow_html=True)
+            # Base Price Display
+            st.markdown('<div class="price-container">', unsafe_allow_html=True)
+            st.markdown('<div class="price-label">Base Rent Price (Ground Floor)</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="price-value">₹{base_prediction:.2f}</div>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            # Adjusted Price Display
+            st.markdown('<div class="price-container" style="background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);">', unsafe_allow_html=True)
+            st.markdown('<div class="price-label">Estimated Rent Price (Floor Adjusted)</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="price-value">₹{adjusted_prediction:.2f}</div>', unsafe_allow_html=True)
+            
+            # Show percentage change
+            if avg_weightage > 0:
+                st.markdown(f'<div class="price-change positive-change">+{avg_weightage:.1f}% Floor Premium</div>', unsafe_allow_html=True)
+            else:
+                st.markdown(f'<div class="price-change">No Floor Premium</div>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
             
             st.markdown('<h4>Property Summary</h4>', unsafe_allow_html=True)
             st.write(f"**Property Type:** {user_data['property_type'].title()}")
             st.write(f"**Size:** {user_data['size_in_sqft']} sqft")
             st.write(f"**Area:** {user_data['area'].title()}")
-            # Display selected floors in a readable format
+            # Display selected floors
             floors_list = user_data['floor_no'].split(',')
             if len(floors_list) == 1:
                 st.write(f"**Floor:** Floor {floors_list[0]}")
@@ -266,10 +351,10 @@ def main():
         
         with col2:
             st.markdown('<h4>Price Comparison</h4>', unsafe_allow_html=True)
-            lower_bound = prediction * 0.85
-            upper_bound = prediction * 1.15
+            lower_bound = adjusted_prediction * 0.85
+            upper_bound = adjusted_prediction * 1.15
             st.write(f"**Fair Range:** ₹{lower_bound:.2f} - ₹{upper_bound:.2f}")
-            comparison_price = st.number_input("Enter Listed Price", min_value=0.0, value=float(prediction), step=1000.0)
+            comparison_price = st.number_input("Enter Listed Price", min_value=0.0, value=float(adjusted_prediction), step=1000.0)
             if comparison_price < lower_bound:
                 st.warning("Listed price is **BELOW** fair range.")
             elif comparison_price > upper_bound:
@@ -280,13 +365,13 @@ def main():
             st.markdown('<h4>Future Projection</h4>', unsafe_allow_html=True)
             years = st.slider("Years", min_value=1, max_value=10, value=5)
             growth_rate = st.slider("Growth (%)", min_value=0.0, max_value=15.0, value=5.0, step=0.5)
-            projected_price = prediction * ((1 + growth_rate/100) ** years)
+            projected_price = adjusted_prediction * ((1 + growth_rate/100) ** years)
             st.write(f"**Rent in {years} years:** ₹{projected_price:.2f}")
             
             # --- MODIFIED PLOTTING SECTION ---
             fig, ax = plt.subplots(figsize=(10, 5))
             years_range = np.arange(0, years + 1)
-            prices = [prediction * ((1 + growth_rate/100) ** y) for y in years_range]
+            prices = [adjusted_prediction * ((1 + growth_rate/100) ** y) for y in years_range]
             
             # Set plot background to white
             ax.set_facecolor('#FFFFFF')
@@ -303,6 +388,23 @@ def main():
             ax.grid(True, linestyle='--', color='black', alpha=0.3)
             
             st.pyplot(fig)
+            
+            # Floor Impact Analysis
+            st.markdown('<h4>Floor Impact Analysis</h4>', unsafe_allow_html=True)
+            floor_impact_data = []
+            for floor in selected_floors:
+                floor_num = int(floor.replace("Floor ", ""))
+                premium = FLOOR_WEIGHTAGE.get(floor_num, 0)
+                floor_price = base_prediction * (1 + premium / 100)
+                floor_impact_data.append({
+                    'Floor': floor,
+                    'Premium (%)': premium,
+                    'Price': f"₹{floor_price:.2f}"
+                })
+            
+            if floor_impact_data:
+                impact_df = pd.DataFrame(floor_impact_data)
+                st.dataframe(impact_df, hide_index=True, use_container_width=True)
 
 # Run the app
 if __name__ == "__main__":
