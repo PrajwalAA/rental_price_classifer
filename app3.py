@@ -169,6 +169,8 @@ def main():
         with col3:
             ownership = st.selectbox("Ownership", ['freehold', 'leasehold', 'cooperative society', 'power_of_attorney'], index=0)
             total_floors = st.selectbox("Total Floors", ['3 floors', '1 floor', '2 floors', '4 floors', '5 floors', '8 floors', '7 floors', '6 floors', '15 floors', '9 floors', '10 floors'], index=0)
+            # --- NEW: Floor Selection with Dropdown ---
+            floor_no = st.selectbox("Floor Number", [f"Floor {i}" for i in range(0, 11)], index=0)
 
         col_a, col_b, col_c = st.columns(3)
         with col_a:
@@ -178,22 +180,6 @@ def main():
         with col_c:
             property_age = st.number_input("Property Age (years)", min_value=0, max_value=100, value=5)
 
-        # --- NEW: Floor Selection with Checkboxes ---
-        st.markdown("#### Select Available Floors")
-        floor_options_map = {
-            "Ground Floor": "0",
-            "1st Floor": "1",
-            "2nd Floor": "2",
-            "3rd Floor": "3",
-            "4th Floor": "4",
-            "8th Floor": "8"
-        }
-        selected_floors_list = []
-        for label, value in floor_options_map.items():
-            # Default to "Ground Floor" being checked
-            if st.checkbox(label, value=(label == "Ground Floor")):
-                selected_floors_list.append(value)
-        
         # --- Expanders for less critical details ---
         with st.expander("Amenities & Charges"):
             amenities_options = ['parking', 'vastu', 'lift', 'cabin', 'meeting room', 'dg and ups', 'water storage', 'staircase', 'security', 'cctv', 'power backup', 'reception area', 'pantry', 'fire extinguishers', 'fire safety', 'oxygen duct', 'food court', 'furnishing', 'internet', 'fire sensors']
@@ -213,9 +199,9 @@ def main():
         predict_button = st.form_submit_button("Predict Rent Price", use_container_width=True)
         
         if predict_button:
-            # Process the selected floors into the required string format
-            floor_no_str = ",".join(sorted(selected_floors_list))
-
+            # Process the selected floor from dropdown
+            floor_no_str = floor_no.replace("Floor ", "")
+            
             lock_in_period = int(re.sub(r'\D', '', lock_in_period_str))
             expected_rent_increase = float(expected_rent_increase_str)
             
@@ -224,7 +210,7 @@ def main():
                 'location_hub': location_hub, 'property_type': property_type, 'ownership': ownership,
                 'size_in_sqft': size_sqft, 'carpet_area_sqft': carpet_area,
                 'private_washroom': private_washroom, 'public_washroom': public_washroom,
-                'floor_no': floor_no_str, 'total_floors': total_floors, # Use the new string
+                'floor_no': floor_no_str, 'total_floors': total_floors,
                 'amenities_count': ', '.join(selected_amenities),
                 'electric_charge_included': electric_charge, 'water_charge_included': water_charge,
                 'property_age': property_age, 'possession_status': possession_status,
@@ -265,6 +251,7 @@ def main():
             st.write(f"**Property Type:** {user_data['property_type'].title()}")
             st.write(f"**Size:** {user_data['size_in_sqft']} sqft")
             st.write(f"**Area:** {user_data['area'].title()}")
+            st.write(f"**Floor:** Floor {user_data['floor_no']}")
         
         with col2:
             st.markdown('<h4>Price Comparison</h4>', unsafe_allow_html=True)
